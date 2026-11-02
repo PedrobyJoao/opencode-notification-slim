@@ -19,6 +19,8 @@ Two notifications:
 
 ## Settings
 
+> You may also disable Opencode's builtin notification just in case
+
 Edit `~/.config/opencode/opencode-notification-slim.json` (or
 `$XDG_CONFIG_HOME/opencode/opencode-notification-slim.json`):
 
@@ -31,3 +33,14 @@ Edit `~/.config/opencode/opencode-notification-slim.json` (or
   }
 }
 ```
+
+## Tests
+
+With Node.js 24 or newer:
+
+```sh
+node --experimental-vm-modules --test notification.test.mjs
+```
+
+These tests mock terminal focus, server events, filesystem reads, and notification
+players; they do not verify live terminal focus reporting or audio output.

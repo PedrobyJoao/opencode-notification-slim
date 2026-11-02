@@ -40,10 +40,19 @@ export default Plugin.define({
     ctx.renderer.on("focus", stop)
     ctx.renderer.on("blur", blur)
 
+    // Every TUI receives server events. A blurred window must not notify for
+    // an unrelated session being viewed in another (possibly focused) window.
+    const ownsSession = (sessionID: string) => {
+      const route = ctx.ui.router.current()
+      if (route.type !== "session" || !ctx.data.session.get(sessionID)) return false
+      const rootID = ctx.data.session.root(sessionID)
+      return !!rootID && rootID === ctx.data.session.root(route.sessionID)
+    }
+
     const notify = async (kind: "complete" | "permission", sessionID: string) => {
-      if (!blurred || disposed) return
+      if (!blurred || disposed || !ownsSession(sessionID)) return
       const current = generation
-      const allowed = () => blurred && !disposed && generation === current
+      const allowed = () => blurred && !disposed && generation === current && ownsSession(sessionID)
 
       // Read on each event so config changes need no restart or file watcher.
       let sound = true
