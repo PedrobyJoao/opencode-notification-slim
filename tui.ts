@@ -2,12 +2,12 @@ import { Plugin } from "@opencode/plugin/tui"
 import { spawn } from "node:child_process"
 import { access, readFile } from "node:fs/promises"
 import { homedir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 // Linux desktop notifications, independent of the terminal's notification support.
 // Config: $XDG_CONFIG_HOME/opencode/opencode-notification-slim.json
-// Sounds: complete.wav and permission.wav beside this file (optional).
+// Sounds: configurable via sounds.complete / sounds.permission, or bundled WAVs.
 const configPath = join(
   process.env.XDG_CONFIG_HOME || join(homedir(), ".config"),
   "opencode",
@@ -47,13 +47,26 @@ export default Plugin.define({
 
       // Read on each event so config changes need no restart or file watcher.
       let sound = true
+      let customSound: string | undefined
       try {
         const config = JSON.parse(await readFile(configPath, "utf8"))
         if (!config || typeof config !== "object" || Array.isArray(config) ||
           (config.sound !== undefined && typeof config.sound !== "boolean")) {
           throw new Error('Expected an object with an optional boolean "sound"')
         }
+        if (config.sounds !== undefined) {
+          if (!config.sounds || typeof config.sounds !== "object" || Array.isArray(config.sounds)) {
+            throw new Error('Expected "sounds" to be an object')
+          }
+          for (const key of ["complete", "permission"]) {
+            const path = config.sounds[key]
+            if (path !== undefined && (typeof path !== "string" || !/\.wav$/i.test(path))) {
+              throw new Error(`Expected sounds.${key} to be a WAV file path`)
+            }
+          }
+        }
         sound = config.sound ?? true
+        customSound = config.sounds?.[kind]
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
           sound = false
@@ -118,11 +131,14 @@ export default Plugin.define({
         .catch(() => warn("Could not launch notify-send."))
 
       if (!sound) return
-      const wav = fileURLToPath(new URL(`./${kind}.wav`, import.meta.url))
+      const wav = customSound
+        ? resolve(dirname(configPath), customSound.startsWith("~/") ? join(homedir(), customSound.slice(2)) : customSound)
+        : fileURLToPath(new URL(`./${kind}.wav`, import.meta.url))
       try {
         await access(wav)
       } catch {
-        return // The user can download sound files later.
+        if (customSound) warn(`Cannot access sound file at ${wav}; sound skipped.`)
+        return // Bundled sounds are optional; users can download them later.
       }
       for (const player of ["pw-play", "paplay", "aplay"]) {
         if (!allowed() || await run(player, [wav])) return
