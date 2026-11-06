@@ -15,6 +15,18 @@ fallback to `notify-send` or something.
 Requires OpenCode V2, Linux, and `notify-send`.
 For sound, install `pw-play`, `paplay`, or `aplay`.
 
+### Install - Config file
+
+Add this entry to `plugins` in `~/.config/opencode/cli.json`:
+
+```json
+{
+  "plugins": ["github:PedrobyJoao/opencode-notification-slim"]
+}
+```
+
+### Install - Through CLI
+
 ```sh
 opencode plugin add github:PedrobyJoao/opencode-notification-slim
 ```
