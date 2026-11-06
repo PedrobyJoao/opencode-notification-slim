@@ -1,0 +1,21 @@
+{
+  "name": "opencode-notification-slim",
+  "version": "0.1.0",
+  "description": "Linux desktop notifications for OpenCode V2",
+  "type": "module",
+  "exports": {
+    "./tui": "./tui.ts"
+  },
+  "files": [
+    "tui.ts",
+    "complete.wav",
+    "permission.wav"
+  ],
+  "scripts": {
+    "test": "node --experimental-vm-modules --test"
+  },
+  "dependencies": {
+    "@opencode/plugin": "^2.2.5"
+  },
+  "repository": "github:PedrobyJoao/opencode-notification-slim"
+}

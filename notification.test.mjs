@@ -7,7 +7,7 @@ import { test } from "node:test"
 import * as url from "node:url"
 import { createContext, SourceTextModule, SyntheticModule } from "node:vm"
 
-const sourceURL = new URL("../tui.ts", import.meta.url)
+const sourceURL = new URL("./tui.ts", import.meta.url)
 const source = stripTypeScriptTypes(readFileSync(sourceURL, "utf8"))
 
 async function fixture(options = {}) {
@@ -156,7 +156,8 @@ for (const [name, sounds, expected] of [
   ["absolute paths with spaces", { complete: "/my sounds/done.wav" }, "/my sounds/done.wav"],
   ["home expansion", { complete: "~/Sounds/done.WAV" }, "/test/home/Sounds/done.WAV"],
   ["relative paths", { complete: "sounds/done.wav" }, "/test/config/opencode/sounds/done.wav"],
-  ["bundled fallback", { permission: "/custom/ask.wav" }, url.fileURLToPath(new URL("../complete.wav", import.meta.url))],
+  ["bundled fallback", { permission: "/custom/ask.wav" },
+    url.fileURLToPath(new URL("./complete.wav", import.meta.url))],
 ]) {
   test(`sound: ${name}`, async t => {
     const f = await fixture({ config: { sound: true, sounds } })

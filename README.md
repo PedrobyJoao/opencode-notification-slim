@@ -10,6 +10,15 @@ doesn't work.
 The ideal fix is to open a PR to Opencode, putting a
 fallback to `notify-send` or something.
 
+## Install
+
+Requires OpenCode V2, Linux, and `notify-send`.
+For sound, install `pw-play`, `paplay`, or `aplay`.
+
+```sh
+opencode plugin add github:PedrobyJoao/opencode-notification-slim
+```
+
 ## How it works
 
 Two notifications:
