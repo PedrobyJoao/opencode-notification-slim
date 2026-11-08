@@ -103,7 +103,12 @@ test("a background TUI does not notify for the session in another focused TUI", 
 })
 
 for (const kind of ["complete", "permission"]) {
-  for (const [id, expected] of [["current", 1], ["child", 1], ["other", 0], ["other-child", 0], ["unknown", 0]]) {
+  const childExpected = kind === "complete" ? 0 : 1
+  const cases = [
+    ["current", 1], ["child", childExpected], ["other", 0],
+    ["other-child", 0], ["unknown", 0],
+  ]
+  for (const [id, expected] of cases) {
     test(`${kind}: blurred TUI only notifies for its displayed session family (${id})`, async t => {
       const f = await fixture()
       t.after(f.dispose)
@@ -114,6 +119,21 @@ for (const kind of ["complete", "permission"]) {
     })
   }
 }
+
+test("only main completion alerts while viewing a subagent", async t => {
+  const f = await fixture({ config: { sound: true } })
+  t.after(f.dispose)
+  f.route({ type: "session", sessionID: "child" })
+  f.renderer.emit("blur")
+  f.emit("child")
+  await settle()
+  assert.equal(f.calls.length, 0)
+
+  f.emit("current")
+  await settle()
+  assert.equal(f.notifications().length, 1)
+  assert.equal(f.sounds().length, 1)
+})
 
 test("focused or unknown terminal focus stays silent", async t => {
   const f = await fixture()

@@ -156,6 +156,9 @@ export default Plugin.define({
     }
 
     const complete = ctx.data.on("session.execution.succeeded", (event) => {
+      // Only the main session signals that the answer is ready.
+      const sessionID = event.data.sessionID
+      if (ctx.data.session.root(sessionID) !== sessionID) return
       void notify("complete", event.data.sessionID).catch(() => warn("Completion notification failed."))
     })
     const permission = ctx.data.on("permission.asked", (event) => {

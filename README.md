@@ -27,7 +27,7 @@ Add this entry to `plugins` in `~/.config/opencode/cli.json`:
 
 Two notifications:
 
-1. Complete (when it's answered)
+1. Complete (when the main agent answers, not a subagent)
 2. Asked permission
 
 ## Settings
