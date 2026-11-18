@@ -79,7 +79,16 @@ async function fixture(options = {}) {
     route(value) { route = value },
     config(value) { config = value },
     emit(id = "current", kind = "complete") {
-      events.get(kind === "complete" ? "session.execution.succeeded" : "permission.asked")({ data: { sessionID: id } })
+      const names = {
+        complete: "session.execution.succeeded",
+        permission: "permission.asked",
+        question: "form.created",
+      }
+      const form = {
+        id: "form-1", sessionID: id, title: "Question", fields: [],
+      }
+      const data = kind === "question" ? { form } : { sessionID: id }
+      events.get(names[kind])({ data })
     },
     notifications: () => calls.filter(call => call.command === "notify-send"),
     sounds: () => calls.filter(call => call.command !== "notify-send"),
@@ -102,7 +111,7 @@ test("a background TUI does not notify for the session in another focused TUI", 
   assert.equal(background.calls.length, 0)
 })
 
-for (const kind of ["complete", "permission"]) {
+for (const kind of ["complete", "permission", "question"]) {
   const childExpected = kind === "complete" ? 0 : 1
   const cases = [
     ["current", 1], ["child", childExpected], ["other", 0],
@@ -138,9 +147,13 @@ test("only main completion alerts while viewing a subagent", async t => {
 test("focused or unknown terminal focus stays silent", async t => {
   const f = await fixture()
   t.after(f.dispose)
-  f.emit()
+  for (const kind of ["complete", "permission", "question"]) {
+    f.emit("current", kind)
+  }
   f.renderer.emit("focus")
-  f.emit()
+  for (const kind of ["complete", "permission", "question"]) {
+    f.emit("current", kind)
+  }
   await settle()
   assert.equal(f.calls.length, 0)
 })
@@ -198,6 +211,32 @@ test("custom permission sound is selected independently", async t => {
   await settle()
   assert.deepEqual(f.sounds().map(call => call.args[0]), ["/test/home/ask.wav"])
 })
+
+for (const custom of [false, true]) {
+  const name = `question uses permission sound (custom: ${custom})`
+  test(name, async t => {
+    const config = custom
+      ? { sounds: { permission: "~/ask.wav" } }
+      : { sound: true }
+    const f = await fixture({ config })
+    t.after(f.dispose)
+    f.renderer.emit("blur")
+    f.emit("child", "question")
+    await settle()
+    const notification = f.notifications()[0]
+    assert.equal(f.notifications().length, 1)
+    assert.equal(notification.args.at(-2), "Subagent")
+    assert.equal(
+      notification.args.at(-1), "An agent needs your input.",
+    )
+    const expected = custom
+      ? "/test/home/ask.wav"
+      : url.fileURLToPath(
+        new URL("./permission.wav", import.meta.url),
+      )
+    assert.deepEqual(f.sounds().map(call => call.args[0]), [expected])
+  })
+}
 
 for (const settings of [{ sound: false }, { sounds: null }, { sounds: { complete: "bad.mp3" } }]) {
   test(`desktop notifications survive disabled or invalid sound settings: ${JSON.stringify(settings)}`, async t => {

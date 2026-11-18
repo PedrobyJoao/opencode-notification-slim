@@ -49,8 +49,12 @@ export default Plugin.define({
       return !!rootID && rootID === ctx.data.session.root(route.sessionID)
     }
 
-    const notify = async (kind: "complete" | "permission", sessionID: string) => {
+    const notify = async (
+      kind: "complete" | "permission" | "question",
+      sessionID: string,
+    ) => {
       if (!blurred || disposed || !ownsSession(sessionID)) return
+      const soundKind = kind === "question" ? "permission" : kind
       const current = generation
       const allowed = () => blurred && !disposed && generation === current && ownsSession(sessionID)
 
@@ -75,7 +79,7 @@ export default Plugin.define({
           }
         }
         sound = config.sound ?? true
-        customSound = config.sounds?.[kind]
+        customSound = config.sounds?.[soundKind]
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
           sound = false
@@ -130,7 +134,12 @@ export default Plugin.define({
       })
 
       const title = ctx.data.session.get(sessionID)?.title?.trim() || "Untitled session"
-      const message = kind === "complete" ? "An agent completed its task." : "An agent needs your permission."
+      const messages = {
+        complete: "An agent completed its task.",
+        permission: "An agent needs your permission.",
+        question: "An agent needs your input.",
+      }
+      const message = messages[kind]
       // Suppress the desktop daemon's own sound, including when sound is false.
       // Once submitted to the desktop daemon, a notification cannot be recalled.
       void run("notify-send", ["--app-name=OpenCode", "--hint=boolean:suppress-sound:true", "--", title, message])
@@ -142,7 +151,9 @@ export default Plugin.define({
       if (!sound) return
       const wav = customSound
         ? resolve(dirname(configPath), customSound.startsWith("~/") ? join(homedir(), customSound.slice(2)) : customSound)
-        : fileURLToPath(new URL(`./${kind}.wav`, import.meta.url))
+        : fileURLToPath(
+          new URL(`./${soundKind}.wav`, import.meta.url),
+        )
       try {
         await access(wav)
       } catch {
@@ -164,12 +175,18 @@ export default Plugin.define({
     const permission = ctx.data.on("permission.asked", (event) => {
       void notify("permission", event.data.sessionID).catch(() => warn("Permission notification failed."))
     })
+    const question = ctx.data.on("form.created", (event) => {
+      void notify("question", event.data.form.sessionID).catch(() => {
+        warn("Question notification failed.")
+      })
+    })
 
     return () => {
       disposed = true
       stop()
       complete()
       permission()
+      question()
       ctx.renderer.off("focus", stop)
       ctx.renderer.off("blur", blur)
     }
